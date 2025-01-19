@@ -11,6 +11,12 @@ A minimalist and elegant user interface for OpenAI's Whisper speech-to-text mode
 - 🎵 Support for multiple audio/video formats (MP3, WAV, M4A, MP4, etc.)
 - ⚡ Real-time transcription with progress feedback
 - 🔍 Segment-based display with timestamps
+- 🎬 Integrated media player with:
+  - Support for both audio and video playback
+  - Click-to-play transcription segments
+  - Auto-scroll synchronized with playback
+  - Visual highlighting of current segment
+  - Time-synced transcription tracking
 - 📝 Multiple export formats:
   - Plain text (TXT)
   - WebVTT subtitles (VTT)

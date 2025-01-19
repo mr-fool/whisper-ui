@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import "./App.css";
 
@@ -50,7 +50,12 @@ function App() {
   const [error, setError] = useState("");
   const [dragActive, setDragActive] = useState(false);
   const [transcriptionTime, setTranscriptionTime] = useState(0);
+  const [currentSegmentIndex, setCurrentSegmentIndex] = useState(-1);
   const fileInputRef = useRef(null);
+  const audioRef = useRef(null);
+  const segmentRefs = useRef([]);
+  const segmentsListRef = useRef(null);
+  const [audioUrl, setAudioUrl] = useState(null);
 
   const resetStates = () => {
     setFile(null);
@@ -60,6 +65,7 @@ function App() {
     setFilename("");
     setError("");
     setLoading(false);
+    setAudioUrl(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -94,6 +100,9 @@ function App() {
     ) {
       setFile(selectedFile);
       setError("");
+      // Create URL for audio player
+      const url = URL.createObjectURL(selectedFile);
+      setAudioUrl(url);
     } else {
       setError("Please select an audio or video file");
     }
@@ -171,6 +180,60 @@ function App() {
       setError("Download process error: " + err.message);
     }
   };
+
+  const handleSegmentClick = (startTime) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = startTime;
+      audioRef.current.play();
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (!audioRef.current || segments.length === 0) return;
+
+    const currentTime = audioRef.current.currentTime;
+    const newIndex = segments.findIndex((segment, index) => {
+      const nextSegment = segments[index + 1];
+      return (
+        currentTime >= segment.start &&
+        (nextSegment
+          ? currentTime < nextSegment.start
+          : currentTime <= segment.end)
+      );
+    });
+
+    if (newIndex !== currentSegmentIndex) {
+      setCurrentSegmentIndex(newIndex);
+      if (
+        newIndex >= 0 &&
+        segmentRefs.current[newIndex] &&
+        segmentsListRef.current
+      ) {
+        const segmentElement = segmentRefs.current[newIndex];
+        const containerElement = segmentsListRef.current;
+
+        // 計算目標捲動位置
+        const targetScroll =
+          segmentElement.offsetTop - containerElement.offsetTop;
+
+        // 使用平滑捲動
+        containerElement.scrollTo({
+          top: targetScroll,
+          behavior: "smooth",
+        });
+      }
+    }
+  };
+
+  useEffect(() => {
+    const mediaElement = audioRef.current;
+    if (mediaElement) {
+      mediaElement.addEventListener("timeupdate", handleTimeUpdate);
+      return () => {
+        mediaElement.removeEventListener("timeupdate", handleTimeUpdate);
+      };
+    }
+  }, [segments, currentSegmentIndex]);
 
   return (
     <div className="app-container">
@@ -353,11 +416,35 @@ function App() {
                     Processing Time: {transcriptionTime.toFixed(1)}s
                   </span>
                 </div>
-                <div className="segments-list">
+
+                <div className="media-player-wrapper">
+                  {file?.type.startsWith("video/") ? (
+                    <video ref={audioRef} controls className="video-player">
+                      <source src={audioUrl} type={file?.type} />
+                      Your browser does not support the video element.
+                    </video>
+                  ) : (
+                    <audio ref={audioRef} controls className="audio-player">
+                      <source src={audioUrl} type={file?.type} />
+                      Your browser does not support the audio element.
+                    </audio>
+                  )}
+                </div>
+
+                <div className="segments-list" ref={segmentsListRef}>
                   {segments.map((segment, index) => (
-                    <div key={index} className="segment-item">
+                    <div
+                      key={index}
+                      ref={(el) => (segmentRefs.current[index] = el)}
+                      className={`segment-item ${
+                        index === currentSegmentIndex ? "segment-active" : ""
+                      }`}
+                      onClick={() => handleSegmentClick(segment.start)}
+                      title="點擊播放此段落"
+                    >
                       <div className="segment-header">
                         <span className="segment-time">
+                          <span className="play-icon">▶</span>
                           {formatTimestamp(segment.start)} →{" "}
                           {formatTimestamp(segment.end)}
                         </span>
@@ -373,26 +460,28 @@ function App() {
                 </div>
               </div>
 
-              <div className="export-container">
-                <h2>Export Options</h2>
-                <div className="format-grid">
-                  {Object.entries(FORMAT_LABELS).map(
-                    ([format, { label, icon, description }]) => (
-                      <button
-                        key={format}
-                        className="format-card"
-                        onClick={() => handleDownload(format)}
-                      >
-                        <div className="format-icon">{icon}</div>
-                        <div className="format-info">
-                          <strong>{label}</strong>
-                          <span>{description}</span>
-                        </div>
-                      </button>
-                    )
-                  )}
+              {formats && (
+                <div className="export-container">
+                  <h2>Export Options</h2>
+                  <div className="format-grid">
+                    {Object.entries(FORMAT_LABELS).map(
+                      ([format, { label, icon, description }]) => (
+                        <button
+                          key={format}
+                          className="format-card"
+                          onClick={() => handleDownload(format)}
+                        >
+                          <div className="format-icon">{icon}</div>
+                          <div className="format-info">
+                            <strong>{label}</strong>
+                            <span>{description}</span>
+                          </div>
+                        </button>
+                      )
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           )}
         </main>

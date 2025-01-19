@@ -338,7 +338,7 @@ body {
   padding: 1rem;
   background-color: var(--bg-200);
   border-radius: 0.75rem;
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
   border-left: 3px solid transparent;
   cursor: pointer;
 }
@@ -347,6 +347,23 @@ body {
   background-color: var(--bg-300);
   border-left-color: var(--primary-200);
   transform: translateX(4px);
+}
+
+.segment-active {
+  background-color: var(--bg-300);
+  border-left-color: var(--primary-200);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.segment-active .segment-time {
+  color: var(--primary-200);
+  font-weight: 500;
+}
+
+.segment-active .play-icon {
+  opacity: 1;
+  transform: translateX(0);
+  color: var(--primary-200);
 }
 
 .play-icon {

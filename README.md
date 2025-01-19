@@ -46,7 +46,7 @@ A minimalist and elegant user interface for OpenAI's Whisper speech-to-text mode
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/yourusername/whisper-ui.git
+git clone https://github.com/JT-427/whisper-ui.git
 cd whisper-ui
 ```
 

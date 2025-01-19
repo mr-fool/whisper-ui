@@ -51,11 +51,21 @@ function App() {
   const [dragActive, setDragActive] = useState(false);
   const [transcriptionTime, setTranscriptionTime] = useState(0);
   const [currentSegmentIndex, setCurrentSegmentIndex] = useState(-1);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [availableModels, setAvailableModels] = useState([]);
+  const [selectedModel, setSelectedModel] = useState("turbo");
+  const [temperature, setTemperature] = useState(0.0);
+  const [noSpeechThreshold, setNoSpeechThreshold] = useState(0.8);
+  const [hallucinationSilenceThreshold, setHallucinationSilenceThreshold] =
+    useState(2.0);
+  const [wordTimestamps, setWordTimestamps] = useState(true);
+  const [initialPrompt, setInitialPrompt] = useState("");
   const fileInputRef = useRef(null);
   const audioRef = useRef(null);
   const segmentRefs = useRef([]);
   const segmentsListRef = useRef(null);
   const [audioUrl, setAudioUrl] = useState(null);
+  const [showAdvancedDialog, setShowAdvancedDialog] = useState(false);
 
   const resetStates = () => {
     setFile(null);
@@ -117,6 +127,15 @@ function App() {
 
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("model", selectedModel);
+    formData.append("temperature", temperature);
+    formData.append("no_speech_threshold", noSpeechThreshold);
+    formData.append(
+      "hallucination_silence_threshold",
+      hallucinationSilenceThreshold
+    );
+    formData.append("word_timestamps", wordTimestamps);
+    formData.append("initial_prompt", initialPrompt);
 
     setLoading(true);
     setError("");
@@ -137,17 +156,26 @@ function App() {
       const endTime = Date.now();
       setTranscriptionTime((endTime - startTime) / 1000); // Convert to seconds
 
-      if (response.data && response.data.segments) {
-        setTranscription(response.data.text || "");
-        setSegments(response.data.segments || []);
-        setFormats(response.data.formats || null);
-        setFilename(response.data.filename || "transcription");
+      if (response.data) {
+        const {
+          text,
+          segments,
+          formats: responseFormats,
+          filename: responseFilename,
+        } = response.data;
+        setTranscription(text || "");
+        setSegments(segments || []);
+        setFormats(responseFormats || null);
+        setFilename(responseFilename || "transcription");
+
+        // 關閉進階設定對話框
+        setShowAdvancedDialog(false);
       } else {
         throw new Error("Invalid response format");
       }
     } catch (err) {
       const errorMessage = err.response?.data?.error || err.message;
-      setError(`Transcription failed: ${errorMessage}`);
+      setError(`轉錄失敗: ${errorMessage}`);
       setSegments([]);
       setFormats(null);
       setTranscription("");
@@ -234,6 +262,34 @@ function App() {
       };
     }
   }, [segments, currentSegmentIndex]);
+
+  useEffect(() => {
+    const fetchModels = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/models`);
+        setAvailableModels(response.data);
+      } catch (error) {
+        console.error("Error fetching models:", error);
+      }
+    };
+    fetchModels();
+  }, []);
+
+  const handleModelChange = async (model) => {
+    try {
+      await axios.post(`${API_URL}/model`, { model });
+      setSelectedModel(model);
+    } catch (error) {
+      setError("Error changing model: " + error.message);
+    }
+  };
+
+  // 關閉對話框時的處理函數
+  const handleCloseDialog = (e) => {
+    if (e.target === e.currentTarget) {
+      setShowAdvancedDialog(false);
+    }
+  };
 
   return (
     <div className="app-container">
@@ -407,13 +463,24 @@ function App() {
             {error && <div className="error-message">{error}</div>}
           </form>
 
+          {file && (
+            <button
+              type="button"
+              className="advanced-settings-button"
+              onClick={() => setShowAdvancedDialog(true)}
+            >
+              <span className="settings-icon">⚙️</span>
+              Advanced Settings
+            </button>
+          )}
+
           {segments.length > 0 && (
             <div className="results-section">
               <div className="transcription-container">
                 <div className="transcription-header">
                   <h2>Transcription Results</h2>
                   <span className="transcription-time">
-                    Processing Time: {transcriptionTime.toFixed(1)}s
+                    Processing Time: {transcriptionTime.toFixed(1)} seconds
                   </span>
                 </div>
 
@@ -421,12 +488,12 @@ function App() {
                   {file?.type.startsWith("video/") ? (
                     <video ref={audioRef} controls className="video-player">
                       <source src={audioUrl} type={file?.type} />
-                      Your browser does not support the video element.
+                      Your browser does not support video playback.
                     </video>
                   ) : (
                     <audio ref={audioRef} controls className="audio-player">
                       <source src={audioUrl} type={file?.type} />
-                      Your browser does not support the audio element.
+                      Your browser does not support audio playback.
                     </audio>
                   )}
                 </div>
@@ -440,7 +507,7 @@ function App() {
                         index === currentSegmentIndex ? "segment-active" : ""
                       }`}
                       onClick={() => handleSegmentClick(segment.start)}
-                      title="點擊播放此段落"
+                      title="Click to play this segment"
                     >
                       <div className="segment-header">
                         <span className="segment-time">
@@ -482,6 +549,194 @@ function App() {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {showAdvancedDialog && (
+            <div className="dialog-overlay" onClick={handleCloseDialog}>
+              <div className="dialog-content">
+                <div className="dialog-header">
+                  <h3>Advanced Settings</h3>
+                  <button
+                    className="close-button"
+                    onClick={() => setShowAdvancedDialog(false)}
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="dialog-body">
+                  <div className="control-group">
+                    <label>Initial Prompt</label>
+                    <div className="prompt-container">
+                      <textarea
+                        className="prompt-input"
+                        value={initialPrompt}
+                        onChange={(e) => setInitialPrompt(e.target.value)}
+                        placeholder="Enter initial prompt to improve transcription accuracy..."
+                        rows={3}
+                      />
+                      <div className="prompt-description">
+                        Provide context or specific terminology to help the
+                        model better understand the audio content
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="control-group">
+                    <label>Transcription Model</label>
+                    <div className="model-options">
+                      {availableModels.map((model) => (
+                        <label key={model} className="model-option">
+                          <input
+                            type="radio"
+                            name="model"
+                            value={model}
+                            checked={selectedModel === model}
+                            onChange={(e) => handleModelChange(e.target.value)}
+                          />
+                          <div>
+                            <span className="model-name">
+                              {model.toUpperCase()}
+                            </span>
+                            <span className="model-description">
+                              {model === "tiny" && "Fastest (Lower accuracy)"}
+                              {model === "base" && "Basic model (Balanced)"}
+                              {model === "small" &&
+                                "Small model (Better accuracy)"}
+                              {model === "medium" &&
+                                "Medium model (High accuracy)"}
+                              {model === "large" &&
+                                "Large model (Highest accuracy)"}
+                              {model === "turbo" &&
+                                "Latest optimized model (Recommended)"}
+                            </span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="control-group">
+                    <label>
+                      Temperature
+                      <span className="value-label">
+                        {temperature.toFixed(1)}
+                      </span>
+                    </label>
+                    <div className="slider-container">
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.1"
+                        value={temperature}
+                        style={{
+                          "--slider-progress": `${(temperature / 1) * 100}%`,
+                        }}
+                        onChange={(e) =>
+                          setTemperature(parseFloat(e.target.value))
+                        }
+                      />
+                      <div className="slider-description">
+                        Adjust generation randomness, higher values produce more
+                        variations
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="control-group">
+                    <label>
+                      No Speech Threshold
+                      <span className="value-label">
+                        {noSpeechThreshold.toFixed(1)}
+                      </span>
+                    </label>
+                    <div className="slider-container">
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.1"
+                        value={noSpeechThreshold}
+                        style={{
+                          "--slider-progress": `${
+                            (noSpeechThreshold / 1) * 100
+                          }%`,
+                        }}
+                        onChange={(e) =>
+                          setNoSpeechThreshold(parseFloat(e.target.value))
+                        }
+                      />
+                      <div className="slider-description">
+                        Adjust sensitivity for non-speech detection, higher
+                        values filter background noise more strictly
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="control-group">
+                    <label>
+                      Silence Threshold
+                      <span className="value-label">
+                        {hallucinationSilenceThreshold.toFixed(1)}s
+                      </span>
+                    </label>
+                    <div className="slider-container">
+                      <input
+                        type="range"
+                        min="0"
+                        max="5"
+                        step="0.5"
+                        value={hallucinationSilenceThreshold}
+                        style={{
+                          "--slider-progress": `${
+                            (hallucinationSilenceThreshold / 5) * 100
+                          }%`,
+                        }}
+                        onChange={(e) =>
+                          setHallucinationSilenceThreshold(
+                            parseFloat(e.target.value)
+                          )
+                        }
+                      />
+                      <div className="slider-description">
+                        Set detection duration for silence, longer values help
+                        avoid false detections
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="control-group">
+                    <label>Word-level Timestamps</label>
+                    <div className="checkbox-container">
+                      <input
+                        type="checkbox"
+                        checked={wordTimestamps}
+                        onChange={(e) => setWordTimestamps(e.target.checked)}
+                      />
+                      <div>
+                        <span className="checkbox-text">
+                          Enable word-level timestamps
+                        </span>
+                        <div className="checkbox-description">
+                          Generate precise timestamps for each word to improve
+                          audio alignment
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="dialog-footer">
+                  <button
+                    className="dialog-button"
+                    onClick={() => setShowAdvancedDialog(false)}
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </main>

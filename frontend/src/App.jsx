@@ -61,6 +61,9 @@ function App() {
   const [wordTimestamps, setWordTimestamps] = useState(true);
   const [initialPrompt, setInitialPrompt] = useState("");
   const [showResults, setShowResults] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [matchedSegments, setMatchedSegments] = useState([]);
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(-1);
   const fileInputRef = useRef(null);
   const audioRef = useRef(null);
   const segmentRefs = useRef([]);
@@ -296,6 +299,55 @@ function App() {
     }
   };
 
+  // 添加搜尋功能
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setMatchedSegments([]);
+      setCurrentMatchIndex(-1);
+      return;
+    }
+
+    const query = searchQuery.toLowerCase();
+    const matches = segments.reduce((acc, segment, index) => {
+      if (segment.text.toLowerCase().includes(query)) {
+        acc.push(index);
+      }
+      return acc;
+    }, []);
+
+    setMatchedSegments(matches);
+    setCurrentMatchIndex(matches.length > 0 ? 0 : -1);
+  }, [searchQuery, segments]);
+
+  const navigateSearch = (direction) => {
+    if (matchedSegments.length === 0) return;
+
+    let newIndex;
+    if (direction === "next") {
+      newIndex = (currentMatchIndex + 1) % matchedSegments.length;
+    } else {
+      newIndex = currentMatchIndex - 1;
+      if (newIndex < 0) newIndex = matchedSegments.length - 1;
+    }
+
+    setCurrentMatchIndex(newIndex);
+    const segmentIndex = matchedSegments[newIndex];
+    handleSegmentClick(segments[segmentIndex].start);
+  };
+
+  const highlightText = (text, query) => {
+    if (!query.trim()) return text;
+
+    const parts = text.split(new RegExp(`(${query})`, "gi"));
+    return parts.map((part, index) =>
+      part.toLowerCase() === query.toLowerCase() ? (
+        <mark key={index}>{part}</mark>
+      ) : (
+        part
+      )
+    );
+  };
+
   return (
     <div className="app-container">
       {loading && (
@@ -341,7 +393,7 @@ function App() {
                 <div className="transcription-header">
                   <h2>Transcription Results</h2>
                   <span className="transcription-time">
-                    Processing Time: {transcriptionTime.toFixed(1)} seconds
+                    {transcriptionTime.toFixed(1)} s
                   </span>
                 </div>
 
@@ -359,6 +411,92 @@ function App() {
                   )}
                 </div>
 
+                <div className="search-section">
+                  <div className="search-container">
+                    <div className="search-input-wrapper">
+                      <svg
+                        className="search-icon"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M21 21L16.65 16.65M19 11C19 15.4183 15.4183 19 11 19C6.58172 19 3 15.4183 3 11C3 6.58172 6.58172 3 11 3C15.4183 3 19 6.58172 19 11Z"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="搜尋轉錄內容..."
+                        className="search-input"
+                      />
+                      {searchQuery && (
+                        <button
+                          className="clear-search"
+                          onClick={() => setSearchQuery("")}
+                        >
+                          ×
+                        </button>
+                      )}
+                    </div>
+                    {matchedSegments.length > 0 && (
+                      <div className="search-navigation">
+                        <span className="match-count">
+                          找到 {matchedSegments.length} 個結果
+                          <span className="current-match">
+                            ({currentMatchIndex + 1}/{matchedSegments.length})
+                          </span>
+                        </span>
+                        <div className="nav-buttons">
+                          <button
+                            onClick={() => navigateSearch("prev")}
+                            className="nav-button"
+                            title="上一個結果"
+                          >
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="M18 15L12 9L6 15"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => navigateSearch("next")}
+                            className="nav-button"
+                            title="下一個結果"
+                          >
+                            <svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="M6 9L12 15L18 9"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <div className="segments-list" ref={segmentsListRef}>
                   {segments.map((segment, index) => (
                     <div
@@ -366,6 +504,12 @@ function App() {
                       ref={(el) => (segmentRefs.current[index] = el)}
                       className={`segment-item ${
                         index === currentSegmentIndex ? "segment-active" : ""
+                      } ${
+                        matchedSegments.includes(index) ? "segment-matched" : ""
+                      } ${
+                        index === matchedSegments[currentMatchIndex]
+                          ? "segment-current-match"
+                          : ""
                       }`}
                       onClick={() => handleSegmentClick(segment.start)}
                       title="Click to play this segment"
@@ -381,7 +525,9 @@ function App() {
                         </span>
                       </div>
                       <div className="segment-content">
-                        {segment.text.trim()}
+                        {searchQuery
+                          ? highlightText(segment.text.trim(), searchQuery)
+                          : segment.text.trim()}
                       </div>
                     </div>
                   ))}

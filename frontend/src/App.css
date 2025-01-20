@@ -1396,3 +1396,150 @@ body {
   background-color: var(--bg-100);
   animation: results-fade-in 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
+
+/* 搜尋功能樣式 */
+.search-section {
+  margin: 1rem 0;
+  padding: 1rem;
+  background: var(--bg-300);
+  border: 1px solid var(--accent-100);
+  border-radius: 1rem;
+}
+
+.search-container {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.search-input-wrapper {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 1rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  color: var(--text-200);
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.875rem 2.75rem;
+  border: 2px solid var(--accent-100);
+  border-radius: 0.75rem;
+  font-size: 1rem;
+  background-color: var(--bg-300);
+  color: var(--text-100);
+  transition: all 0.2s ease;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--primary-200);
+  box-shadow: 0 0 0 3px rgba(147, 121, 98, 0.1);
+}
+
+.search-input::placeholder {
+  color: var(--text-200);
+}
+
+.clear-search {
+  position: absolute;
+  right: 0.875rem;
+  background: none;
+  border: none;
+  color: var(--text-200);
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-size: 1.25rem;
+}
+
+.clear-search:hover {
+  background-color: var(--bg-200);
+  color: var(--text-100);
+}
+
+.search-navigation {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem;
+  border-radius: 0.75rem;
+  background: var(--bg-200);
+}
+
+.match-count {
+  font-size: 0.875rem;
+  color: var(--text-100);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.75rem;
+}
+
+.current-match {
+  color: var(--primary-200);
+  font-weight: 500;
+}
+
+.nav-buttons {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.nav-button {
+  background: var(--bg-300);
+  border: 1px solid var(--accent-100);
+  border-radius: 0.5rem;
+  width: 2rem;
+  height: 2rem;
+  padding: 0.25rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-100);
+  transition: all 0.2s ease;
+}
+
+.nav-button:hover {
+  background: var(--bg-200);
+  border-color: var(--primary-200);
+  color: var(--primary-200);
+  transform: translateY(-1px);
+}
+
+.nav-button svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.segment-matched {
+  border-left: 3px solid var(--primary-200);
+}
+
+.segment-current-match {
+  background-color: var(--bg-200);
+  border-left: 3px solid var(--primary-200);
+}
+
+mark {
+  background-color: rgba(147, 121, 98, 0.2);
+  color: inherit;
+  padding: 0.1em 0.2em;
+  border-radius: 0.25rem;
+  font-weight: 500;
+}

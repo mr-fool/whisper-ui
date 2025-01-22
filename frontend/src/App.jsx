@@ -64,6 +64,8 @@ function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [matchedSegments, setMatchedSegments] = useState([]);
   const [currentMatchIndex, setCurrentMatchIndex] = useState(-1);
+  const [podcastUrl, setPodcastUrl] = useState("");
+  const [downloadingPodcast, setDownloadingPodcast] = useState(false);
   const fileInputRef = useRef(null);
   const audioRef = useRef(null);
   const segmentRefs = useRef([]);
@@ -154,7 +156,7 @@ function App() {
         headers: {
           "Content-Type": "multipart/form-data",
         },
-        timeout: 300000, // 5 minutes timeout
+        // timeout: 300000, // 5 minutes timeout
       });
 
       const endTime = Date.now();
@@ -346,6 +348,50 @@ function App() {
         part
       )
     );
+  };
+
+  const handlePodcastDownload = async () => {
+    if (!podcastUrl) {
+      setError("請輸入 Podcast 連結");
+      return;
+    }
+
+    setDownloadingPodcast(true);
+    setError("");
+
+    try {
+      const response = await axios.post(`${API_URL}/download-podcast`, {
+        url: podcastUrl,
+      });
+
+      if (response.data.success) {
+        // 建立一個假的 File 物件
+        const response2 = await axios.get(
+          `${API_URL}/download/${response.data.filename}`,
+          {
+            responseType: "blob",
+          }
+        );
+
+        const downloadedFile = new File(
+          [response2.data],
+          response.data.filename,
+          {
+            type: "audio/mpeg",
+          }
+        );
+
+        setFile(downloadedFile);
+        setPodcastUrl("");
+        const url = URL.createObjectURL(downloadedFile);
+        setAudioUrl(url);
+      }
+    } catch (err) {
+      const errorMessage = err.response?.data?.error || err.message;
+      setError(`下載失敗: ${errorMessage}`);
+    } finally {
+      setDownloadingPodcast(false);
+    }
   };
 
   return (
@@ -575,6 +621,37 @@ function App() {
               className="upload-section"
               onDragEnter={handleDrag}
             >
+              <div className="podcast-input-section">
+                <input
+                  type="text"
+                  value={podcastUrl}
+                  onChange={(e) => setPodcastUrl(e.target.value)}
+                  placeholder="輸入 Podcast 連結..."
+                  className="podcast-input"
+                />
+                <button
+                  type="button"
+                  onClick={handlePodcastDownload}
+                  className={`podcast-download-button ${
+                    downloadingPodcast ? "loading" : ""
+                  }`}
+                  disabled={downloadingPodcast || !podcastUrl}
+                >
+                  {downloadingPodcast ? (
+                    <>
+                      <div className="spinner"></div>
+                      <span>下載中...</span>
+                    </>
+                  ) : (
+                    <span>下載 Podcast</span>
+                  )}
+                </button>
+              </div>
+
+              <div className="separator">
+                <span>或</span>
+              </div>
+
               <div
                 className={`drop-zone ${dragActive ? "drag-active" : ""} ${
                   file ? "has-file" : ""

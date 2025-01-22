@@ -5,9 +5,17 @@ import os
 import tempfile
 import json
 from datetime import timedelta
+import requests
+import yt_dlp
+import re
+import xml.etree.ElementTree as ET
 
 app = Flask(__name__)
 CORS(app)
+
+# 確保 download 資料夾存在
+DOWNLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'download')
+os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 # 設定可用的模型大小
 AVAILABLE_MODELS = {
@@ -111,6 +119,7 @@ def transcribe_audio():
     try:
         # 在實際需要時才載入模型
         model = load_model_if_needed(current_model)
+        print(f"已載入模型: {current_model}")  # 調試資訊
 
         # 創建臨時文件來保存上傳的音頻
         with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as temp_file:
@@ -123,7 +132,8 @@ def transcribe_audio():
                 no_speech_threshold=no_speech_threshold,
                 word_timestamps=word_timestamps,
                 hallucination_silence_threshold=hallucination_silence_threshold,
-                initial_prompt=initial_prompt if initial_prompt else None
+                initial_prompt=initial_prompt if initial_prompt else None,
+                condition_on_previous_text=False
             )
             
             # 刪除臨時文件
@@ -173,6 +183,143 @@ def download_transcription(format_type):
         download_name=f'{filename}.{format_type}',
         mimetype='text/plain'
     )
+
+def get_podcast_info(url):
+    """從 Apple Podcasts URL 獲取播客資訊"""
+    try:
+        # 從 URL 提取播客 ID 和集數 ID
+        podcast_id = re.search(r'id(\d+)', url)
+        episode_id = re.search(r'i=(\d+)', url)
+        
+        if not podcast_id or not episode_id:
+            raise Exception("無效的 Apple Podcasts URL")
+            
+        # 首先獲取播客的所有集數資訊
+        api_url = f"https://itunes.apple.com/lookup?id={podcast_id.group(1)}&entity=podcastEpisode&limit=200"
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+        }
+        
+        print(f"正在獲取播客資訊: {api_url}")  # 調試資訊
+        response = requests.get(api_url, headers=headers)
+        response.raise_for_status()
+        data = response.json()
+        
+        if not data.get('results'):
+            raise Exception("找不到播客資訊")
+            
+        # 在所有集數中尋找目標集數
+        target_episode_id = episode_id.group(1)
+        episode_info = None
+        
+        print(f"正在搜尋集數 ID: {target_episode_id}")  # 調試資訊
+        for result in data['results']:
+            if str(result.get('trackId')) == target_episode_id:
+                episode_info = result
+                break
+                
+        if not episode_info:
+            raise Exception(f"找不到指定的集數 (ID: {target_episode_id})")
+            
+        print(f"找到集數資訊: {episode_info.get('trackName')}")  # 調試資訊
+        return {
+            'podcast_name': episode_info.get('collectionName', ''),
+            'episode_name': episode_info.get('trackName', ''),
+            'episode_url': episode_info.get('episodeUrl', ''),
+            'duration': episode_info.get('trackTimeMillis', 0) / 1000  # 轉換為秒
+        }
+    except Exception as e:
+        print(f"獲取播客資訊時發生錯誤: {str(e)}")  # 調試資訊
+        raise Exception(f"獲取播客資訊失敗: {str(e)}")
+
+def download_episode(episode_info):
+    """下載播客單集"""
+    try:
+        if not episode_info.get('episode_url'):
+            raise Exception("找不到音訊檔案連結")
+            
+        # 準備檔案名稱
+        podcast_name = re.sub(r'[<>:"/\\|?*]', '_', episode_info['podcast_name'])
+        episode_name = re.sub(r'[<>:"/\\|?*]', '_', episode_info['episode_name'])
+        filename = f"{podcast_name} - {episode_name}.mp3"
+        filepath = os.path.join(DOWNLOAD_DIR, filename)
+        
+        print(f"準備下載到: {filepath}")  # 調試資訊
+        print(f"音訊 URL: {episode_info['episode_url']}")  # 調試資訊
+        
+        # 使用 yt-dlp 下載音訊
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'outtmpl': filepath,
+            'quiet': False,  # 顯示下載進度
+            'no_warnings': False,  # 顯示警告
+            'verbose': True,  # 顯示詳細資訊
+        }
+        
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([episode_info['episode_url']])
+                    
+        if not os.path.exists(filepath):
+            raise Exception("下載完成但找不到檔案")
+            
+        print(f"下載完成: {filepath}")  # 調試資訊
+        return {
+            'filename': filename,
+            'title': f"{episode_info['podcast_name']} - {episode_info['episode_name']}",
+            'duration': episode_info['duration']
+        }
+    except Exception as e:
+        print(f"下載音訊檔案時發生錯誤: {str(e)}")  # 調試資訊
+        raise Exception(f"下載音訊檔案失敗: {str(e)}")
+
+@app.route('/download-podcast', methods=['POST'])
+def download_podcast():
+    if not request.is_json:
+        return jsonify({'error': 'Invalid request'}), 400
+    
+    data = request.get_json()
+    url = data.get('url')
+    
+    if not url:
+        return jsonify({'error': 'No URL provided'}), 400
+    
+    try:
+        print(f"收到下載請求: {url}")  # 調試資訊
+        # 檢查是否為 Apple Podcasts URL
+        if 'podcasts.apple.com' in url:
+            # 獲取播客資訊
+            podcast_info = get_podcast_info(url)
+            print(f"獲取到播客資訊: {podcast_info}")  # 調試資訊
+            # 下載音訊
+            result = download_episode(podcast_info)
+            return jsonify({
+                'success': True,
+                'filename': result['filename'],
+                'title': result['title'],
+                'duration': result['duration']
+            })
+        else:
+            raise Exception("目前只支援 Apple Podcasts 連結")
+            
+    except Exception as e:
+        print(f"處理下載請求時發生錯誤: {str(e)}")  # 調試資訊
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/download/<filename>', methods=['GET'])
+def get_downloaded_file(filename):
+    try:
+        file_path = os.path.join(DOWNLOAD_DIR, filename)
+        if not os.path.exists(file_path):
+            return jsonify({'error': 'File not found'}), 404
+            
+        return send_file(
+            file_path,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='audio/mpeg'
+        )
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', debug=True, port=5510) 

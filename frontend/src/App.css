@@ -300,6 +300,89 @@ body {
   max-width: 1200px;
 }
 
+.podcast-input-section {
+  width: 100%;
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.podcast-input {
+  flex: 1;
+  padding: 1rem;
+  border: 2px solid var(--accent-100);
+  border-radius: 0.5rem;
+  background: var(--bg-300);
+  color: var(--text-100);
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.podcast-input:focus {
+  outline: none;
+  border-color: var(--primary-200);
+  background: var(--bg-200);
+}
+
+.podcast-download-button {
+  padding: 0 2rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: var(--primary-200);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.podcast-download-button:hover:not(:disabled) {
+  background: var(--primary-300);
+}
+
+.podcast-download-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.podcast-download-button.loading {
+  opacity: 0.8;
+  cursor: wait;
+}
+
+.separator {
+  width: 100%;
+  text-align: center;
+  margin: 2rem 0;
+  position: relative;
+}
+
+.separator::before,
+.separator::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: calc(50% - 2rem);
+  height: 1px;
+  background: var(--accent-100);
+}
+
+.separator::before {
+  left: 0;
+}
+
+.separator::after {
+  right: 0;
+}
+
+.separator span {
+  background: var(--bg-100);
+  padding: 0 1rem;
+  color: var(--text-200);
+}
+
 .drop-zone {
   width: 100%;
   min-height: 300px;

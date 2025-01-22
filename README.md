@@ -2,13 +2,15 @@
 
 A minimalist and elegant user interface for OpenAI's Whisper speech-to-text model, built with React + Vite. This application provides an intuitive way to transcribe audio and video files with high accuracy.
 
-![WhisperUI Screenshot](screenshot.png)
-
 ## Features
 
 - 🎯 Clean and intuitive user interface
 - 📁 Drag-and-drop file upload
 - 🎵 Support for multiple audio/video formats (MP3, WAV, M4A, MP4, etc.)
+- 🎙️ Apple Podcasts Integration:
+  - Direct download from Apple Podcasts links
+  - Automatic audio extraction and preparation
+  - Support for specific episode downloads
 - ⚡ Real-time transcription with progress feedback
 - 🔍 Segment-based display with timestamps
 - 🔎 Advanced search functionality:
@@ -51,6 +53,7 @@ A minimalist and elegant user interface for OpenAI's Whisper speech-to-text mode
 - Flask
 - OpenAI Whisper
 - FFmpeg for audio processing
+- yt-dlp for podcast downloads
 
 ## Installation
 
@@ -117,6 +120,24 @@ whisper-ui/
 
 - `POST /transcribe`: Upload and transcribe audio/video file
 - `POST /download/<format_type>`: Download transcription in specified format
+- `POST /download-podcast`: Download episode from Apple Podcasts
+- `GET /download/<filename>`: Download processed audio file
+
+## Usage Guide
+
+### Downloading from Apple Podcasts
+
+1. Copy the episode link from Apple Podcasts (e.g., https://podcasts.apple.com/[region]/podcast/[show-name]/id[ID]?i=[episode-ID])
+2. Paste the link into the podcast input field
+3. Click the download button
+4. Wait for the download to complete, and the system will prepare for transcription
+
+### Audio Transcription
+
+1. Upload an audio file or use a downloaded podcast
+2. Select desired transcription options
+3. Start transcription
+4. Choose export format when complete
 
 ## Development
 
@@ -127,6 +148,7 @@ The backend uses Flask and the Whisper model for transcription. Custom parameter
 - Enhanced silence detection
 - Word-level timestamps
 - Hallucination prevention
+- Podcast download and processing support
 
 ### Frontend Development
 

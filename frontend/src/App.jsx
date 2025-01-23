@@ -66,6 +66,8 @@ function App() {
   const [currentMatchIndex, setCurrentMatchIndex] = useState(-1);
   const [podcastUrl, setPodcastUrl] = useState("");
   const [downloadingPodcast, setDownloadingPodcast] = useState(false);
+  const [availableLanguages, setAvailableLanguages] = useState({});
+  const [selectedLanguage, setSelectedLanguage] = useState("auto");
   const fileInputRef = useRef(null);
   const audioRef = useRef(null);
   const segmentRefs = useRef([]);
@@ -142,6 +144,7 @@ function App() {
     );
     formData.append("word_timestamps", wordTimestamps);
     formData.append("initial_prompt", initialPrompt);
+    formData.append("language", selectedLanguage);
 
     setLoading(true);
     setError("");
@@ -283,6 +286,16 @@ function App() {
       }
     };
     fetchModels();
+
+    const fetchLanguages = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/languages`);
+        setAvailableLanguages(response.data);
+      } catch (error) {
+        console.error("Error fetching languages:", error);
+      }
+    };
+    fetchLanguages();
   }, []);
 
   const handleModelChange = async (model) => {
@@ -923,6 +936,29 @@ function App() {
                         <div className="prompt-description">
                           Provide context or specific terminology to help the
                           model better understand the audio content
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="control-group">
+                      <label>Language</label>
+                      <div className="language-select-container">
+                        <select
+                          value={selectedLanguage}
+                          onChange={(e) => setSelectedLanguage(e.target.value)}
+                          className="language-select"
+                        >
+                          {Object.entries(availableLanguages).map(
+                            ([code, name]) => (
+                              <option key={code} value={code}>
+                                {name}
+                              </option>
+                            )
+                          )}
+                        </select>
+                        <div className="language-description">
+                          Select the primary language of the audio content or
+                          use Auto Detection
                         </div>
                       </div>
                     </div>

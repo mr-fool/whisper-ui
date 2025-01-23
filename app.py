@@ -13,6 +13,7 @@ import xml.etree.ElementTree as ET
 app = Flask(__name__)
 CORS(app)
 
+
 # 確保 download 資料夾存在
 DOWNLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'download')
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
@@ -25,6 +26,28 @@ AVAILABLE_MODELS = {
     "medium": "medium",
     "large": "large",
     "turbo": "turbo"
+}
+
+# 設定支援的語言
+AVAILABLE_LANGUAGES = {
+    "auto": "Auto Detection",
+    "ar": "Arabic",
+    "zh": "Chinese",
+    "nl": "Dutch",
+    "en": "English",
+    "fr": "French",
+    "de": "German",
+    "hi": "Hindi",
+    "it": "Italian",
+    "ja": "Japanese",
+    "ko": "Korean",
+    "pl": "Polish",
+    "pt": "Portuguese",
+    "ru": "Russian",
+    "es": "Spanish",
+    "th": "Thai",
+    "tr": "Turkish",
+    "vi": "Vietnamese"
 }
 
 # 改為全域變數，但不立即載入模型
@@ -97,6 +120,11 @@ def change_model():
     current_model = new_model
     return jsonify({'success': True, 'current_model': current_model})
 
+@app.route('/languages', methods=['GET'])
+def get_languages():
+    """Return list of available languages"""
+    return jsonify(AVAILABLE_LANGUAGES)
+
 @app.route('/transcribe', methods=['POST'])
 def transcribe_audio():
     if 'file' not in request.files:
@@ -113,6 +141,7 @@ def transcribe_audio():
     hallucination_silence_threshold = float(data.get('hallucination_silence_threshold', 2.0))
     word_timestamps = data.get('word_timestamps', 'true').lower() == 'true'
     initial_prompt = data.get('initial_prompt', None)
+    language = data.get('language', 'auto')  # 新增語言參數
 
     base_filename = get_base_filename(file.filename)
 
@@ -133,6 +162,7 @@ def transcribe_audio():
                 word_timestamps=word_timestamps,
                 hallucination_silence_threshold=hallucination_silence_threshold,
                 initial_prompt=initial_prompt if initial_prompt else None,
+                language=None if language == 'auto' else language,  # 設定語言參數
                 condition_on_previous_text=False
             )
             
@@ -152,7 +182,8 @@ def transcribe_audio():
                 'text': result['text'],
                 'segments': result['segments'],
                 'formats': formats,
-                'filename': base_filename
+                'filename': base_filename,
+                'detected_language': result.get('language', 'unknown')  # 返回檢測到的語言
             })
     except Exception as e:
         return jsonify({'error': str(e)}), 500

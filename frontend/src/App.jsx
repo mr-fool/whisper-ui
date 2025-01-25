@@ -183,7 +183,7 @@ function App() {
       }
     } catch (err) {
       const errorMessage = err.response?.data?.error || err.message;
-      setError(`轉錄失敗: ${errorMessage}`);
+      setError(`Transcription failed: ${errorMessage}`);
       setSegments([]);
       setFormats(null);
       setTranscription("");
@@ -218,7 +218,7 @@ function App() {
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      setError("Download process error: " + err.message);
+      setError("Download failed: " + err.message);
     }
   };
 
@@ -365,7 +365,7 @@ function App() {
 
   const handlePodcastDownload = async () => {
     if (!podcastUrl) {
-      setError("請輸入 Podcast 連結");
+      setError("Please enter a Podcast URL");
       return;
     }
 
@@ -401,7 +401,7 @@ function App() {
       }
     } catch (err) {
       const errorMessage = err.response?.data?.error || err.message;
-      setError(`下載失敗: ${errorMessage}`);
+      setError(`Download failed: ${errorMessage}`);
     } finally {
       setDownloadingPodcast(false);
     }
@@ -491,7 +491,7 @@ function App() {
                         type="text"
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="搜尋轉錄內容..."
+                        placeholder="Search transcription..."
                         className="search-input"
                       />
                       {searchQuery && (
@@ -506,7 +506,7 @@ function App() {
                     {matchedSegments.length > 0 && (
                       <div className="search-navigation">
                         <span className="match-count">
-                          找到 {matchedSegments.length} 個結果
+                          Found {matchedSegments.length} results
                           <span className="current-match">
                             ({currentMatchIndex + 1}/{matchedSegments.length})
                           </span>
@@ -515,7 +515,7 @@ function App() {
                           <button
                             onClick={() => navigateSearch("prev")}
                             className="nav-button"
-                            title="上一個結果"
+                            title="Previous result"
                           >
                             <svg
                               viewBox="0 0 24 24"
@@ -534,7 +534,7 @@ function App() {
                           <button
                             onClick={() => navigateSearch("next")}
                             className="nav-button"
-                            title="下一個結果"
+                            title="Next result"
                           >
                             <svg
                               viewBox="0 0 24 24"
@@ -639,7 +639,7 @@ function App() {
                   type="text"
                   value={podcastUrl}
                   onChange={(e) => setPodcastUrl(e.target.value)}
-                  placeholder="輸入 Podcast 連結..."
+                  placeholder="Enter Podcast URL..."
                   className="podcast-input"
                 />
                 <button
@@ -653,16 +653,16 @@ function App() {
                   {downloadingPodcast ? (
                     <>
                       <div className="spinner"></div>
-                      <span>下載中...</span>
+                      <span>Downloading...</span>
                     </>
                   ) : (
-                    <span>下載 Podcast</span>
+                    <span>Download Podcast</span>
                   )}
                 </button>
               </div>
 
               <div className="separator">
-                <span>或</span>
+                <span>or</span>
               </div>
 
               <div
